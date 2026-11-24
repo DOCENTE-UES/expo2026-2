@@ -141,7 +141,7 @@
   <div class="grid" id="grid"></div>
 
   
- <script src="js/qrcode.min.js"></script>
+ <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
  <script>
     const listaEquipos = document.getElementById("listaEquipos");
     const urlBase = document.getElementById("urlBase");
@@ -156,6 +156,10 @@
       const canvas = document.createElement("canvas");
       canvas.className = "qr-canvas";
       contenedor.appendChild(canvas);
+      if (!window.QRCode) {
+        contenedor.innerHTML = "<div style='color:#dc2626'>Librería QR no cargada</div>";
+        return;
+      }
       new QRCode(canvas, {
         text: texto,
         width: 160,
