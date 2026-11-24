@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Votar - ExpoTecnologica 2026-2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --success: #16a34a;
+    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  .card {
+    background: var(--card);
+    width: 100%;
+    max-width: 420px;
+    padding: 32px 24px;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+    word-wrap: break-word;
+  }
+  p.error {
+    color: #dc2626;
+    font-size: 0.95rem;
+    margin-top: 8px;
+  }
+  .range-wrap {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  label.range-label {
+    font-size: 0.9rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+  .value-display {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  button.votar {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--primary);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s, opacity 0.2s;
+  }
+  button.votar:hover:not(:disabled) { background: var(--primary-dark); }
+  button.votar:active:not(:disabled) { transform: scale(0.98); }
+  button.votar:disabled {
+    background: var(--muted);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .confirm {
+    font-size: 0.95rem;
+    color: var(--success);
+    font-weight: 600;
+    margin-top: 6px;
+    min-height: 1.2rem;
+  }
+  @media (max-width: 480px) {
+    .card { padding: 24px 16px; }
+    h1 { font-size: 1.5rem; }
+    .value-display { font-size: 2.5rem; }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>ExpoTecnologica 2026-2</h1>
+    <h2 id="equipo-nombre">Cargando equipo...</h2>
+    <div class="range-wrap">
+      <label class="range-label">Calificaci&oacute;n (1 a 10)</label>
+      <input type="range" id="puntos" min="1" max="10" step="1" value="8">
+      <div class="value-display" id="valor">8</div>
+    </div>
+    <button class="votar" id="btnVotar">Votar</button>
+    <p class="error" id="msgError" style="display:none;"></p>
+    <div class="confirm" id="confirm"></div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+    const h2 = document.getElementById("equipo-nombre");
+    const range = document.getElementById("puntos");
+    const valor = document.getElementById("valor");
+    const btn = document.getElementById("btnVotar");
+    const msgError = document.getElementById("msgError");
+    const confirm = document.getElementById("confirm");
+
+    const params = new URLSearchParams(window.location.search);
+    const equipoRaw = params.get("equipo");
+    const equipo = equipoRaw ? decodeURIComponent(equipoRaw).trim() : "";
+
+    if (!equipo) {
+      h2.textContent = "Error: no se indicó un equipo";
+      h2.style.color = "#dc2626";
+      btn.disabled = true;
+      msgError.textContent = "Falta el parámetro ?equipo=NombreDelEquipo en la URL.";
+      msgError.style.display = "block";
+    } else {
+      h2.textContent = equipo;
+    }
+
+    range.addEventListener("input", () => {
+      valor.textContent = range.value;
+    });
+
+    const storageKey = `voto_${equipo}`;
+    const yaVoto = localStorage.getItem(storageKey);
+
+    async function votar() {
+      if (!equipo) return;
+      if (yaVoto) {
+        btn.disabled = true;
+        h2.textContent = equipo;
+        const p = document.createElement("p");
+        p.className = "error";
+        p.textContent = "Ya votaste por este equipo desde este navegador.";
+        btn.insertAdjacentElement("afterend", p);
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Enviando...";
+      confirm.textContent = "";
+
+      try {
+        const puntos = parseInt(range.value, 10);
+        await addDoc(collection(db, "votos"), {
+          equipo,
+          puntos,
+          fecha: serverTimestamp(),
+        });
+        localStorage.setItem(storageKey, "1");
+        btn.textContent = "Votado";
+        confirm.textContent = "¡Voto registrado con éxito!";
+      } catch (error) {
+        console.error(error);
+        btn.disabled = false;
+        btn.textContent = "Votar";
+        confirm.textContent = "Error al registrar el voto. Intenta de nuevo.";
+        confirm.style.color = "#dc2626";
+      }
+    }
+
+    btn.addEventListener("click", votar);
+  </script>
+</body>
+</html>

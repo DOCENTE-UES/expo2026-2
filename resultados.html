@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resultados - ExpoTecnologica 2026-2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #2563eb;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --gold: #d97706;
+    --silver: #94a3b8;
+    --bronze: #b45309;
+    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 16px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  p.sub {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .resultados {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--card);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  th, td {
+    text-align: left;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: #f1f5f9;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr.pos1 td { background: #fef3c7; position: relative; }
+  tr.pos2 td { background: #e2e8f0; position: relative; }
+  tr.pos3 td { background: #fef3c7; position: relative; }
+  td.pos {
+    font-weight: 800;
+    font-size: 1.25rem;
+    width: 60px;
+    color: var(--muted);
+  }
+  td.pos1 { color: var(--gold); }
+  td.pos2 { color: var(--silver); }
+  td.pos3 { color: var(--bronze); }
+  td.equipo {
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+  td.votos, td.total {
+    font-variant-numeric: tabular-nums;
+  }
+  td.total {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--primary);
+  }
+  .empty {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--muted);
+    font-size: 1rem;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .b1 { background: #fef3c7; color: var(--gold); }
+  .b2 { background: #e2e8f0; color: var(--silver); }
+  .b3 { background: #fde68a; color: var(--bronze); }
+  @media (max-width: 480px) {
+    th, td { padding: 10px 12px; font-size: 0.9rem; }
+    h1 { font-size: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>ExpoTecnologica 2026-2</h1>
+    <p class="sub">Resultados en tiempo real</p>
+  </header>
+  <div class="resultados">
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th>Posici&oacute;n</th>
+          <th>Equipo</th>
+          <th>Votos recibidos</th>
+          <th>Puntaje Total</th>
+        </tr>
+      </thead>
+      <tbody id="cuerpo"></tbody>
+    </table>
+    <div id="vacio" class="empty" style="display:none;">No hay votos registrados aún.</div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import { collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+    const cuerpo = document.getElementById("cuerpo");
+    const vacio = document.getElementById("vacio");
+
+    const votosRef = collection(db, "votos");
+
+    const unsub = onSnapshot(votosRef, (snap) => {
+      const agregados = {};
+      snap.forEach((doc) => {
+        const data = doc.data();
+        const equipo = data.equipo;
+        const puntos = typeof data.puntos === "number" ? data.puntos : 0;
+        if (!agregados[equipo]) {
+          agregados[equipo] = { votos: 0, total: 0 };
+        }
+        agregados[equipo].votos += 1;
+        agregados[equipo].total += puntos;
+      });
+
+      const lista = Object.entries(agregados).map(([equipo, stats]) => ({
+        equipo,
+        votos: stats.votos,
+        total: stats.total,
+      }));
+
+      lista.sort((a, b) => b.total - a.total || b.votos - a.votos || a.equipo.localeCompare(b.equipo));
+
+      cuerpo.innerHTML = "";
+      if (lista.length === 0) {
+        vacio.style.display = "block";
+        return;
+      }
+      vacio.style.display = "none";
+
+      lista.forEach((item, idx) => {
+        const tr = document.createElement("tr");
+        const pos = idx + 1;
+        let clasePos = "";
+        let badge = "";
+        if (pos === 1) { clasePos = "pos1"; badge = '<span class="badge b1">1°</span>'; }
+        else if (pos === 2) { clasePos = "pos2"; badge = '<span class="badge b2">2°</span>'; }
+        else if (pos === 3) { clasePos = "pos3"; badge = '<span class="badge b3">3°</span>'; }
+        tr.className = clasePos;
+        tr.innerHTML = `
+          <td class="pos ${clasePos}">#${pos}</td>
+          <td class="equipo">${escapeHtml(item.equipo)}${badge}</td>
+          <td class="votos">${item.votos}</td>
+          <td class="total">${item.total}</td>
+        `;
+        cuerpo.appendChild(tr);
+      });
+    }, (err) => {
+      console.error(err);
+      cuerpo.innerHTML = `<tr><td colspan="4" style="color:#dc2626; text-align:center; padding:20px;">Error al cargar resultados.</td></tr>`;
+    });
+  </script>
+</body>
+</html>

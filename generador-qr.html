@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador QRs - ExpoTecnologica 2026-2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #2563eb;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 16px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  p.sub { font-size: 0.95rem; color: var(--muted); margin-top: 6px; }
+  .panel {
+    max-width: 720px;
+    margin: 0 auto 24px auto;
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 640px) {
+    .panel { grid-template-columns: 1fr 1fr; }
+  }
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  label { font-size: 0.9rem; font-weight: 700; color: var(--muted); }
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.95rem;
+  }
+  button.generar {
+    grid-column: 1 / -1;
+    padding: 14px 20px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--primary);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  button.generar:hover { background: #1d4ed8; }
+  .grid {
+    max-width: 900px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 20px;
+  }
+  .qr-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    page-break-inside: avoid;
+  }
+  .qr-card .titulo {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .qr-card .nombre {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+    word-wrap: break-word;
+  }
+  .qr-card .qr { margin: 0 auto 10px auto; }
+  .qr-canvas { image-rendering: pixelated; }
+  .hidden { display: none !important; }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    header, .panel, button { display: none !important; }
+    .grid { grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0; }
+    .qr-card { border: none; box-shadow: none; padding: 10px; page-break-inside: avoid; }
+    .qr-card .titulo { margin-bottom: 6px; }
+    .qr-card .nombre { margin-bottom: 10px; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>ExpoTecnologica 2026-2</h1>
+    <p class="sub">Generador de c&oacute;digos QR para equipos</p>
+  </header>
+  <div class="panel">
+    <div class="field">
+      <label>Nombres de equipos (uno por l&iacute;nea)</label>
+      <textarea id="listaEquipos" placeholder="Equipo A&#10;Equipo B&#10;Equipo C"></textarea>
+    </div>
+    <div class="field">
+      <label>URL base de GitHub Pages</label>
+      <input type="text" id="urlBase" value="">
+    </div>
+    <button class="generar" id="btnGenerar">Generar QRs</button>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
+  <script>
+    const listaEquipos = document.getElementById("listaEquipos");
+    const urlBase = document.getElementById("urlBase");
+    const btnGenerar = document.getElementById("btnGenerar");
+    const grid = document.getElementById("grid");
+
+    const defaultOrigin = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "");
+    urlBase.value = defaultOrigin || window.location.origin;
+
+    function generarQR(texto, contenedor) {
+      contenedor.innerHTML = "";
+      const canvas = document.createElement("canvas");
+      canvas.className = "qr-canvas";
+      contenedor.appendChild(canvas);
+      new QRCode(canvas, {
+        text: texto,
+        width: 160,
+        height: 160,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H,
+      });
+    }
+
+    btnGenerar.addEventListener("click", () => {
+      const raw = listaEquipos.value;
+      const equipos = raw.split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+
+      if (equipos.length === 0) {
+        alert("Ingresa al menos un nombre de equipo.");
+        return;
+      }
+
+      const base = urlBase.value.trim().replace(/\/$/, "");
+      grid.innerHTML = "";
+
+      equipos.forEach((equipo) => {
+        const card = document.createElement("div");
+        card.className = "qr-card";
+        const urlQr = `${base}/index.html?equipo=${encodeURIComponent(equipo)}`;
+
+        card.innerHTML = `
+          <div class="titulo">ExpoTecnologica 2026-2</div>
+          <div class="nombre">${escapeHtml(equipo)}</div>
+          <div class="qr"></div>
+        `;
+        const qrContenedor = card.querySelector(".qr");
+        generarQR(urlQr, qrContenedor);
+        grid.appendChild(card);
+      });
+    });
+
+    function escapeHtml(texto) {
+      const div = document.createElement("div");
+      div.textContent = texto;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
