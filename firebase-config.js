@@ -3,12 +3,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebas
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "TAIzaSyD7treJIo9ho_kXmJsN4IKuLh0WHRN_Hu4",
-  authDomain: "tg2026-2.firebaseapp.com",
-  projectId: "tg2026-2",
-  storageBucket: "tg2026-2.firebasestorage.app",
-  messagingSenderId: "650836707009",
-  appId: "1:650836707009:web:4ddd7a0d24edb2caf3f640",
+  apiKey: "AIzaSyDAZAJWvEJepw9RAwUH0GWFOpuT6EO3u6E",
+  authDomain: "expo2026-2.firebaseapp.com",
+  projectId: "expo2026-2",
+  storageBucket: "expo2026-2.firebasestorage.app",
+  messagingSenderId: "363515182228",
+  appId: "1:363515182228:web:1566cc5eddb33298500881"
 };
 
 const app = initializeApp(firebaseConfig);
